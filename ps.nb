@@ -1,3 +1,4 @@
+(*This is a mathematica implementation of Pollard & Strassen Method for integer factorization*)
 (*all the arrays below are starting from index 1*)
 (*10.5*  Let n = 2^k = Length[u], and evaluate polynomial f at the \
 points u_0,...,u_{n-1} using the subproduct tree of k+1 levels *)
@@ -182,32 +183,7 @@ PollardStrassen[n];
 
 
 
-
-n:1591 b:39.89 r:8 k:3
-
-sqrt(b): 6.32
-
-Step1: 
-
-f:     545+1396 x+390 x^2+462 x^3+175 x^4+1354 x^5+546 x^6+36 x^7+x^8
-
-check: 545+1396 x+390 x^2+462 x^3+175 x^4+1354 x^5+546 x^6+36 x^7+x^8
-
-Step2: 
-
-f:     545+1396 x+390 x^2+462 x^3+175 x^4+1354 x^5+546 x^6+36 x^7+x^8
-
-u:    {0,8,16,24,32,40,48,56}
-
-fu:    {545,1022,1519,267,703,903,386,1137}
-
-check: {545,1022,1519,267,703,903,386,1137}
-
-Step3:
-
-gcd: {1,1,1,1,37,43,1,1}
-
-The least prime factor of 1591 is 37
+(* The least prime factor of 1591 is 37 *)
 
 
 
