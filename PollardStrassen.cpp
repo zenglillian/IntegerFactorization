@@ -1,3 +1,5 @@
+//This code implements Pollard & Strassen method for integer factorization.
+//Note the algorithm is implemented with double-presicion fast Fourier Transform in this code, in order to work on large numbers, arbitrary-precision fast Fourier Transform should be used
 #include <iostream>
 #include <cmath>
 #include <numeric>
