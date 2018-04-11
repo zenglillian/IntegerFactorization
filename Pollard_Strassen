@@ -1,0 +1,214 @@
+(*all the arrays below are starting from index 1*)
+(*10.5*  Let n = 2^k = Length[u], and evaluate polynomial f at the \
+points u_0,...,u_{n-1} using the subproduct tree of k+1 levels *)
+Godown[f_, u_, n_, k_, start_] := Module[{r0, r1, ma, mb, g},
+  If[k == 0, fu[[start + 1]] = f,
+    (* else *)
+    (*transfer M From array of coefficients form to polynomial form*)
+\
+
+    {
+     ma = 0;
+     mb = 0;
+     For[g = 1, g <= Length[M2[[k, 2 start + 1]]], g++, 
+      ma = ma + M2[[k, 2 start + 1, g]]*x^(g - 1)];
+     For[g = 1, g <= Length[M2[[k, 2 start + 2]]], g++, 
+      mb = mb + M2[[k, 2 start + 2, g]]*x^(g - 1)];
+     (*find r0,r1*)
+     r0 = PolynomialMod[PolynomialRemainder[f, ma, x], n];
+     r1 = PolynomialMod[PolynomialRemainder[f, mb, x], n];
+     Godown[r0, u, n, k - 1, 2 start];
+     Godown[ r1, u, n, k - 1, 2 start + 1];
+     }];
+  ]
+
+(*10.3* Let n = 2^k = Length[u], and build up subproduct tree of k+1 \
+levels using x-u_0,..., x-u_{n-1}. In order to achieve PS complexity, \
+the polynomial multiplication R = p*q should be done using a fast \
+poly mult algorithm *)
+Buildup1[r_, n_] := Module[{k, j, i, p, q, g, R, R1},
+  k = Log[2, r];
+  For[ j = 0, j < r, j++,
+    {
+     M1[[1, j + 1, 1]] = j + 1;
+     M1[[1, j + 1, 2]] = 1;
+     }]
+   
+   For[i = 1, i <= k, i++,
+    {
+     For[j = 0, j < 2^(k - i), j++,
+       {
+        (*multiply
+        Naive way:
+        p=0;
+        q=0;
+        For[g=1,g<=Length[M1[[i,2*j+1]]],g++,p=p+M1[[i,2*j+1,g]]*
+        x^(g-1)];
+        For[g=1,g<=Length[M1[[i,2*j+2]]],g++,q=q+M1[[i,2*j+2,g]]*
+        x^(g-1)];
+        R1=PolynomialMod[Expand[p*q],n];
+        M1[[i+1,j+1]]=CoefficientList[R1,x];
+        Print["R1",M2[[i+1,j+1]]];
+        *)
+        (*Fast Multiplication*)
+        p = M1[[i, 2*j + 1]];
+        q = M1[[i, 2*j + 2]];
+        For[m = Length[M1[[i, 2*j + 1]]], m < 2^i + 1, m++,
+         {AppendTo[p, 0];
+          AppendTo[q, 0];
+          }];
+        mul = 
+         Fourier[p, FourierParameters -> {1, 1}]*
+          Fourier[q, FourierParameters -> {1, 1}];
+        R = 
+         Round[Mod[
+           Re[InverseFourier[mul, FourierParameters -> {1, 1}]], n]];
+        M1[[i + 1, j + 1]] = R;
+        
+        }];
+     }];
+  f = M1[[k + 1, 1, 1]];
+  For[i = 1, i < Length[M1[[k + 1, 1]]], i++, 
+   f = f + M1[[k + 1, 1, i + 1]]*x^i];
+  ]
+(*10.3 for step 2*)
+Buildup2[u_, n_] := Module[{k, r, j, i, p, q, g, R},
+  k = Log[2, Length[u]];
+  r = 2^k;
+  For[ j = 0, j < r, j++,
+    {
+     M2[[1, j + 1, 1]] = Mod[-u[[j + 1]], n];
+     M2[[1, j + 1, 2]] = 1;
+     }]
+   For[i = 1, i <= k, i++,
+    {
+     For[j = 0, j < 2^(k - i), j++,
+       {
+        
+        (*multiply
+        Naive way:
+        p=0;
+        q=0;
+        For[g=1,g<=Length[M2[[i,2*j+1]]],g++,p=p+M2[[i,2*j+1,g]]*
+        x^(g-1)];
+        For[g=1,g<=Length[M2[[i,2*j+2]]],g++,q=q+M2[[i,2*j+2,g]]*
+        x^(g-1)];
+        R1=PolynomialMod[Expand[p*q],n];
+        M2[[i+1,j+1]]=CoefficientList[R1,x];
+        *)
+        (*Fast Multiplication*)
+        p = M2[[i, 2*j + 1]];
+        q = M2[[i, 2*j + 2]];
+        For[m = Length[M2[[i, 2*j + 1]]], m < 2^i + 1, m++,
+         {AppendTo[p, 0];
+          AppendTo[q, 0];
+          }];
+        mul = 
+         Fourier[p, FourierParameters -> {1, 1}]*
+          Fourier[q, FourierParameters -> {1, 1}];
+        R = 
+         Round[Mod[
+           Re[InverseFourier[mul, FourierParameters -> {1, 1}]], n]];
+        M2[[i + 1, j + 1]] = R;
+        
+        }];
+     }];
+  ]
+
+(*10.7* Let n = 2^k = Length[u], and evaluate polynomial f at the \
+points u_0,...,u_{n-1} *)
+MultipointEval[f_, u_, n_] := Module[{k}, {
+   k = Log[2, Length[u]];
+   (*10.3: building up the subproduct tree*)
+   Buildup2[u, n];
+   (*10.5 Going down the subproduct tree*)
+   Godown[f, u, n, k, 0];
+   }]
+
+(*Pollard Strassen Method for integer factorization*)
+PollardStrassen[n_] := Module[{b, k, r},
+  (*Set up variables*)
+  b = Sqrt[n];
+  k = Ceiling[Log2[Ceiling[Sqrt[b]]]];
+  r = 2^k;
+  M1 = Table[0, {i, 0, k}, {j, 0, 2^(k - i) - 1}, {l, 0, 2^i}];
+  M2 = Table[0, {i, 0, k}, {j, 0, 2^(k - i) - 1}, {l, 0, 2^i}];
+  Print["n:", n, " b:", NumberForm[N[b], {10, 2}], " r:", r, " k:", k];
+  Print["sqrt(b): ", NumberForm[N[Sqrt[b]], {10, 2}]];
+  
+  (*Step1: Call 10.3 to compute coefficents f=\[Product](x+
+  j) for 1\[LessSlantEqual]j\[LessSlantEqual]c*)
+  Buildup1[r, n];
+  f1 = 1;
+  For[j = 1, j <= r, j++, {f1 = PolynomialMod[Expand[f1*(x + j)], n]}];
+  Print["Step1: "];
+  Print["f:     ", f];
+  Print["check: ", f1];
+  
+  (*step2: 
+  Call fast multipoint evaluation algorithm 10.7 to compute gi\
+\[Element]{0,\[Ellipsis],N\[Minus]1} such that gi mod N=
+  f(ic) for 0\[LessEqual]i<c*)
+  fu = Array[FU, r, 0];
+  u = Array[U, r, 0];
+  For[i = 0, i < r, i++, u[[i + 1]] = i*r];
+  MultipointEval[f, u, n];
+  Print["Step2: "];
+  Print["f:     ", f];
+  Print["u:    ", u];
+  Print["fu:    ", fu];
+  Print["check: ", Table[Mod[f /. x -> u[[j]], n], {j, 1, r}]];
+  
+  (*step3: find the least prime factor of n*)
+  Print["Step3:"];
+  Print["gcd: ", GCD[fu, n]];
+  factor = 0;
+  For[i = 1, i <= r, i++,
+   {
+    If[1 < GCD[fu, n][[i]] && GCD[fu, n][[i]] < n,
+     {If[factor > GCD[fu, n][[i]] || factor == 0, 
+        factor = GCD[fu, n][[i]]];}]
+    }
+   ];
+  If[factor <= 0, Print[n, " is a prime"], 
+   Print["The least prime factor of ", n, " is ", factor]];
+  ]
+
+
+
+Clear[A, B, C1, a, b, c, n, p, q, r, x, g, f, k, c, u, M, i, j, fu, 
+  r0, r1, R0, R1];
+n = 1591;
+PollardStrassen[n];
+
+
+
+
+n:1591 b:39.89 r:8 k:3
+
+sqrt(b): 6.32
+
+Step1: 
+
+f:     545+1396 x+390 x^2+462 x^3+175 x^4+1354 x^5+546 x^6+36 x^7+x^8
+
+check: 545+1396 x+390 x^2+462 x^3+175 x^4+1354 x^5+546 x^6+36 x^7+x^8
+
+Step2: 
+
+f:     545+1396 x+390 x^2+462 x^3+175 x^4+1354 x^5+546 x^6+36 x^7+x^8
+
+u:    {0,8,16,24,32,40,48,56}
+
+fu:    {545,1022,1519,267,703,903,386,1137}
+
+check: {545,1022,1519,267,703,903,386,1137}
+
+Step3:
+
+gcd: {1,1,1,1,37,43,1,1}
+
+The least prime factor of 1591 is 37
+
+
+
